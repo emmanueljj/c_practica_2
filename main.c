@@ -187,6 +187,8 @@ void procesar(char distribucion[], char modo[], double val_minimo, double val_ma
 
     //calcula las estadisitcas llamnndo funciones
     double t_inicio_calculo = get_time_sec();
+    
+    // Medidas base (se calculan una sola vez)
     double maximo = calc_maximo(arreglo_y, num_datos);
     double minimo = calc_minimo(arreglo_y, num_datos);
     double media_aritmetica = calc_media_aritmetica(arreglo_x, num_datos);
@@ -196,40 +198,69 @@ void procesar(char distribucion[], char modo[], double val_minimo, double val_ma
     double varianza = calc_varianza(arreglo_x, num_datos, media_aritmetica);
     double desviacion_estandar = calc_desviacion_std(varianza);
     double coef_variacion = calc_coef_variacion(desviacion_estandar, media_aritmetica);
-    double cuartil_1 = calc_cuartil(arreglo_y, num_datos, 1);
-    double decil_5 = calc_decil(arreglo_y, num_datos, 5);
-    double percentil_95 = calc_percentil(arreglo_y, num_datos, 95);
-    double momento_no_centrado_3 = calc_momento_no_centrado(arreglo_x, num_datos, 3);
+    
+    // El 4to momento centrado y desviación estándar se necesitan por adelantado para la curtosis
     double momento_centrado_4 = calc_momento_centrado(arreglo_x, num_datos, media_aritmetica, 4);
     double curtosis = calc_curtosis(momento_centrado_4, desviacion_estandar);
+    double momento_centrado_3 = calc_momento_centrado(arreglo_x, num_datos, media_aritmetica, 3);
+    double asimetria = 0.0;
+    if (pow(desviacion_estandar, 3) >= 1e-12) {
+        asimetria = momento_centrado_3 / pow(desviacion_estandar, 3);
+    }
+
     double t_fin_calculo = get_time_sec();
     double tiempo_total_calculo = t_fin_calculo - t_inicio_calculo;
     
-    //impresiones
+    printf("\nMEDIDAS ESTADISTICAS\n");
+    printf("______________________________________________________________________\n");
+    printf("Maximo: %.6f\n", maximo);
+    printf("Minimo: %.6f\n", minimo);
+    printf("Media Aritmetica: %.6f\n", media_aritmetica);
+    printf("Media Geometrica: %.6f\n", media_geometrica);
+    printf("Mediana: %.6f\n", mediana);
+    printf("Moda: %.6f\n", moda);
+    printf("Varianza: %.6f\n", varianza);
+    printf("Desviacion Estandar: %.6f\n", desviacion_estandar);
+    printf("Coeficiente de Variacion (CV): %.6f\n", coef_variacion);
+    printf("Curtosis: %.6f\n", curtosis);
     
-    printf("\n+------------------------------------+------------------------------------+\n");
-    printf("| MEDIDA ESTADISTICA                 | VALOR CALCULADO                    |\n");
-    printf("+------------------------------------+------------------------------------+\n");
-    printf("| 1. Maximo                          | %-34.6f |\n", maximo);
-    printf("| 2. Minimo                          | %-34.6f |\n", minimo);
-    printf("| 3. Media Aritmetica                | %-34.6f |\n", media_aritmetica);
-    printf("| 4. Media Geometrica                | %-34.6f |\n", media_geometrica);
-    printf("| 5. Mediana                         | %-34.6f |\n", mediana);
-    printf("| 6. Moda                            | %-34.6f |\n", moda);
-    printf("| 7. Varianza                        | %-34.6f |\n", varianza);
-    printf("| 8. Desviacion Estandar             | %-34.6f |\n", desviacion_estandar);
-    printf("| 9. Coeficiente de Variacion (CV)   | %-34.6f |\n", coef_variacion);
-    printf("| 10. Cuartil 1 (Q1)                 | %-34.6f |\n", cuartil_1);
-    printf("| 11. Decil 5 (D5)                   | %-34.6f |\n", decil_5);
-    printf("| 12. Percentil 95 (P95)             | %-34.6f |\n", percentil_95);
-    printf("| 13. Momento No Centrado (Orden 3)  | %-34.6f |\n", momento_no_centrado_3);
-    printf("| 14. Momento Centrado (Orden 4)     | %-34.6f |\n", momento_centrado_4);
-    printf("| 15. Curtosis                       | %-34.6f |\n", curtosis);
-    printf("+------------------------------------+------------------------------------+\n");
-    printf("| Tiempo de Ordenamiento (%-9s) | %-31.6f seg |\n", alg_ordenamiento, tiempo_total_ordenamiento);
-    printf("| Tiempo de Calculo de Medidas       | %-31.6f seg |\n", tiempo_total_calculo);
-    printf("+------------------------------------+------------------------------------+\n\n");
+    printf("\nMOMENTOS ESTADISTICOS\n");
+    printf("______________________________________________________________________\n");
+    for(int i = 1; i <= 4; i++) {
+        printf("Momento NO Centrado (Orden %d): %.6f\n", i, calc_momento_no_centrado(arreglo_x, num_datos, i));
+    }
+    for(int i = 1; i <= 4; i++) {
+        printf("Momento Centrado (Orden %d): %.6f\n", i, calc_momento_centrado(arreglo_x, num_datos, media_aritmetica, i));
+    }
+    printf("Momento Estandar 1: %.6f\n", 0.0);
+    printf("Momento Estandar 2: %.6f\n", 1.0);
+    printf("Momento Estandar 3 (Asimetria): %.6f\n", asimetria);
+    printf("Momento Estandar 4 (Curtosis): %.6f\n", curtosis);
+
+    printf("\nCUARTILES (Q1 - Q3)\n");
+    printf("______________________________________________________________________\n");
+    for(int i = 1; i <= 3; i++) {
+        printf("Cuartil %d (Q%d): %.6f\n", i, i, calc_cuartil(arreglo_y, num_datos, i));
+    }
+
+    printf("\nDECILES (D1 - D9)\n");
+    printf("______________________________________________________________________\n");
+    for(int i = 1; i <= 9; i++) {
+        printf("Decil %d (D%d): %.6f\n", i, i, calc_decil(arreglo_y, num_datos, i));
+    }
+
+    printf("\nPERCENTILES (P1 - P99)\n");
+    printf("______________________________________________________________________\n");
+    for(int i = 1; i <= 99; i++) {
+        printf("Percentil %d (P%d): %.6f\n", i, i, calc_percentil(arreglo_y, num_datos, i));
+    }
+
+    printf("\nRENDIMIENTO (TIEMPOS)\n");
+    printf("______________________________________________________________________\n");
+    printf("Tiempo de Ordenamiento (%s): %.6f seg\n", alg_ordenamiento, tiempo_total_ordenamiento);
+    printf("Tiempo de Calculo de Medidas: %.6f seg\n\n", tiempo_total_calculo);
 
     free(arreglo_x);
     free(arreglo_y);
+    
 }

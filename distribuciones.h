@@ -1,7 +1,7 @@
 
 #define DISTRIBUCIONES_H
 
-double get_base_uniform(void);
+double obtener_base_uniforme(void);
 
 void gen_uniforme(double* X, int n, double min, double max);
 void gen_normal(double* X, int n, double mu, double sigma, double min, double max, int recorte);

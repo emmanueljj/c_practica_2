@@ -4,6 +4,4 @@
 
 /*Obtiene el tiempo actual del reloj del CPU en segundos.*/
 double get_time_sec(void);
-
-void clear_buffer(void);
 #endif
