@@ -259,7 +259,6 @@ void procesar(char distribucion[], char modo[], double val_minimo, double val_ma
     printf("______________________________________________________________________\n");
     printf("Tiempo de Ordenamiento (%s): %.6f seg\n", alg_ordenamiento, tiempo_total_ordenamiento);
     printf("Tiempo de Calculo de Medidas: %.6f seg\n\n", tiempo_total_calculo);
-
     free(arreglo_x);
     free(arreglo_y);
     

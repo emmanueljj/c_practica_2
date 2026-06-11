@@ -206,23 +206,26 @@ void sort_bucket(double *X, int n) {
 
 void sort_counting(double *X, int n) {
     if (n <= 1) return;
-
+    //no conserva numeros deciamales
+    //ambos son la primer pocicion
     int min_val = (int)X[0];
     int max_val = (int)X[0];
+    //encontrar maximo y minimo
     for (int i = 1; i < n; i++) {
         if ((int)X[i] < min_val) min_val = (int)X[i];
         if ((int)X[i] > max_val) max_val = (int)X[i];
     }
-
+    //rango
     int rg = max_val - min_val;
-
+    //reserva de memoria
     int *h = (int *)calloc(rg + 1, sizeof(int));
     if (!h) return;
 
+    /*histograma*/
     for (int i = 0; i < n; i++) {
-        h[(int)X[i] - min_val]++;
+        h[(int)X[i] - min_val]++;//casteo (se pieden deciamales)
     }
-
+    //ordenamiento
     for (int i = 0, j = 0; i < n; ) {
         while (!h[j]) j++;
         while (h[j]) {
