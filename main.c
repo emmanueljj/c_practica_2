@@ -1,206 +1,235 @@
-/**
- * @file main.c
- * @brief Función de arranque principal y manejo de flujos de control.
- */
-
+/*librerias propias de c*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include "utils.h"
-#include "distributions.h"
-#include "sorting.h"
-#include "statistics.h"
 
-void run_interactive(SimConfig* config);
-void run_simulation(SimConfig* config);
+/*arhcivos de funciones declaradas*/
+#include "utilidades.h"
+#include "distribuciones.h"
+#include "ordenamiento.h"
+#include "estadisticas.h"
+
+/*prototipos*/
+void procesar(char distribucion[], char modo[], double val_minimo, double val_maximo, double val_mu, double val_var,
+                 int num_datos, unsigned int semilla_val, char alg_ordenamiento[]);
 
 int main(int argc, char* argv[]) {
-    SimConfig config;
-    // Configuración por defecto
-    memset(&config, 0, sizeof(SimConfig));
-    config.seed = 12345;
-    config.interactive = 1;
-    strcpy(config.sort_alg, "shell"); // Algoritmo robusto por defecto
 
-    // Parser manual básico para simular control CLI [cite: 182]
-    if (argc > 1) {
-        config.interactive = 0;
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "--dist") == 0) strcpy(config.dist, argv[++i]);
-            else if (strcmp(argv[i], "--mode") == 0) strcpy(config.mode, argv[++i]);
-            else if (strcmp(argv[i], "--min") == 0) config.min = atof(argv[++i]);
-            else if (strcmp(argv[i], "--max") == 0) config.max = atof(argv[++i]);
-            else if (strcmp(argv[i], "--mu") == 0) config.mu = atof(argv[++i]);
-            else if (strcmp(argv[i], "--var") == 0) config.var = atof(argv[++i]);
-            else if (strcmp(argv[i], "-n") == 0) config.n = atoi(argv[++i]);
-            else if (strcmp(argv[i], "--seed") == 0) config.seed = (unsigned int)atoi(argv[++i]);
-            else if (strcmp(argv[i], "--sort") == 0) strcpy(config.sort_alg, argv[++i]);
+    /* esta funcion tiene como propocito obtener los valores de las varibles por argumentos o por consola y ejecutar la funcion prosesar*/
+    char distribucion[20] = "";
+    char modo[20] = "";
+    double val_minimo = 0.0;
+    double val_maximo = 0.0;
+    double val_mu = 0.0;
+    double val_var = 0.0;
+    int num_datos = 0;
+    unsigned int semilla_val = 12345;
+    char alg_ordenamiento[20] = "shell"; 
+    int interactivo = 1;        //funciona como bandera para usar o no los argumentos (si los hay)
+
+    int num_parametros = 8;
+
+    // 2. Parser manual (Argumentos de consola)
+    if (argc >= num_parametros) {
+
+        interactivo = 0;
+
+        for (int i = 1; i < num_parametros; i++) {
+            
+            if (i == 1) strcpy(distribucion, argv[i]);
+            else if (i == 2) strcpy(modo, argv[i]);
+            else if (i == 3) {
+                if (strcmp(modo, "params") == 0) val_mu = atof(argv[i]);
+                else val_minimo = atof(argv[i]);
+            }
+            else if (i == 4) {
+                if (strcmp(modo, "params") == 0) val_var = atof(argv[i]);
+                else val_maximo = atof(argv[i]);
+            }
+            else if (i == 5) num_datos = atoi(argv[i]);
+
+            else if (i == 6) semilla_val = (unsigned int)atoi(argv[i]);
+
+            else if (i == 7) strcpy(alg_ordenamiento, argv[i]);
         }
     }
 
-    if (config.interactive) {
-        run_interactive(&config);
-    } else {
-        run_simulation(&config);
+    // 3. Menú interactivo integrado directamente en main()
+    if (interactivo) {
+        int opc_distribucion, opc_modo, opc_ordenamiento;
+
+        printf("=== PRACTICA 2: ANALISIS ESTADISTICO ===\n");
+        printf("Ingrese numero de muestras (N <= 100000): ");
+
+        if (scanf("%d", &num_datos) != 1) return 1;  //devuelve 1 en caso de ser 0
+
+        printf("\nSeleccione la distribucion:\n1. Uniforme\n2. Normal\n3. Laplace\nSeleccion: ");
+
+        if (scanf("%d", &opc_distribucion) != 1) return 1;
+        if (opc_distribucion == 1) strcpy(distribucion, "uniform");
+        else if (opc_distribucion == 2) strcpy(distribucion, "normal");
+        else strcpy(distribucion, "laplace");
+
+        printf("\nSeleccione modalidad de ingreso de parametros:\n1. Por rango (min/max)\n2. Por parametros propios\nSeleccion: ");
+        
+        if (scanf("%d", &opc_modo) != 1) return 1;
+        if (opc_modo == 1) strcpy(modo, "range");
+        else strcpy(modo, "params");
+
+        if (strcmp(modo, "range") == 0) {
+
+            printf("Ingrese valor minimo: ");
+            if (scanf("%lf", &val_minimo) != 1) return 1;
+
+            printf("Ingrese valor maximo: ");
+            if (scanf("%lf", &val_maximo) != 1) return 1;
+        } else {
+            printf("Ingrese Media (mu): ");
+            if (scanf("%lf", &val_mu) != 1) return 1;
+
+            printf("Ingrese Varianza (var): ");
+            if (scanf("%lf", &val_var) != 1) return 1;
+        }
+
+        printf("Ingrese semilla del generador: ");
+        if (scanf("%u", &semilla_val) != 1) return 1;
+
+        printf("\nSeleccione algoritmo de ordenamiento:\n");
+        printf("1. Bubble\n2. Odd-Even\n3. Selection\n4. Insertion\n5. Cocktail\n6. Shell\n7. Bucket\n8. Counting\nSeleccion: ");
+        if (scanf("%d", &opc_ordenamiento) != 1) return 1;
+        
+        char* algoritmos[] = {"bubble", "oddeven", "selection", "insertion", "cocktail", "shell", "bucket", "counting"};
+        if (opc_ordenamiento >= 1 && opc_ordenamiento <= 8) strcpy(alg_ordenamiento, algoritmos[opc_ordenamiento - 1]);       // -1 por el indice 0
     }
+
+    //llamamos a funcion procesar
+    procesar(distribucion, modo, val_minimo, val_maximo, val_mu, val_var, num_datos, semilla_val, alg_ordenamiento);
 
     return 0;
 }
 
-void run_interactive(SimConfig* config) {
-    int opc_dist, opc_mode, opc_sort;
-    printf("=== PRACTICA 2: ANALISIS ESTADISTICO ===\n");
-    printf("Ingrese numero de muestras (N <= 100000): ");
-    if (scanf("%d", &config->n) != 1) return;
+void procesar(char distribucion[], char modo[], double val_minimo, double val_maximo, double val_mu, double val_var, int num_datos, unsigned int semilla_val, char alg_ordenamiento[]) {
 
-    printf("\nSeleccione la distribucion:\n1. Uniforme\n2. Normal\n3. Laplace\nSeleccion: ");
-    if (scanf("%d", &opc_dist) != 1) return;
-    if (opc_dist == 1) strcpy(config->dist, "uniform");
-    else if (opc_dist == 2) strcpy(config->dist, "normal");
-    else strcpy(config->dist, "laplace");
+    srand(semilla_val); 
 
-    printf("\nSeleccione modalidad de ingreso de parametros:\n1. Por rango (min/max)\n2. Por parametros propios\nSeleccion: ");
-    if (scanf("%d", &opc_mode) != 1) return;
-    if (opc_mode == 1) strcpy(config->mode, "range");
-    else strcpy(config->mode, "params");
+    double rango_minimo = val_minimo;
+    double rango_maximo = val_maximo;
+    double gen_mu = val_mu;
+    double gen_sigma = 0.0;
+    double gen_b = 0.0;
 
-    if (strcmp(config->mode, "range") == 0) {
-        printf("Ingrese valor minimo: ");
-        if (scanf("%le", &config->min) != 1) { /* No-op para manejo tipado */ };
-        if (scanf("%lf", &config->min) != 1) return;
-        printf("Ingrese valor maximo: ");
-        if (scanf("%lf", &config->max) != 1) return;
-    } else {
-        printf("Ingrese Media (mu): ");
-        if (scanf("%lf", &config->mu) != 1) return;
-        printf("Ingrese Varianza (var): ");
-        if (scanf("%lf", &config->var) != 1) return;
+    // Procesar parametrizaciones cruzadas
+    if (strcmp(distribucion, "uniform") == 0) {
+
+        if (strcmp(modo, "params") == 0) {
+
+            rango_minimo = val_mu - sqrt(3.0 * val_var); 
+            rango_maximo = val_mu + sqrt(3.0 * val_var); 
+        }
+    } else if (strcmp(distribucion, "normal") == 0) {
+
+        if (strcmp(modo, "range") == 0) {
+
+            gen_mu = (val_minimo + val_maximo) / 2.0; 
+            gen_sigma = (val_maximo - val_minimo) / 6.0; 
+        } else {
+
+            gen_mu = val_mu;
+            gen_sigma = sqrt(val_var); 
+            rango_minimo = gen_mu - 3.0 * gen_sigma; 
+            rango_maximo = gen_mu + 3.0 * gen_sigma; 
+        }
+    } else if (strcmp(distribucion, "laplace") == 0) {
+
+        if (strcmp(modo, "range") == 0) {
+            gen_mu = (val_minimo + val_maximo) / 2.0; 
+            gen_b = (val_maximo - val_minimo) / (6.0 * sqrt(2.0)); 
+        } else {
+
+            gen_mu = val_mu;
+            gen_b = sqrt(val_var / 2.0); 
+            rango_minimo = gen_mu - 3.0 * sqrt(2.0) * gen_b; 
+            rango_maximo = gen_mu + 3.0 * sqrt(2.0) * gen_b; 
+        }
     }
 
-    printf("Ingrese semilla del generador: ");
-    if (scanf("%u", &config->seed) != 1) return;
+    double* arreglo_x = (double*)malloc(num_datos * sizeof(double));
+    double* arreglo_y = (double*)malloc(num_datos * sizeof(double));
 
-    printf("\nSeleccione algoritmo de ordenamiento:\n");
-    printf("1. Bubble\n2. Odd-Even\n3. Selection\n4. Insertion\n5. Cocktail\n6. Shell\n7. Bucket\n8. Counting\nSeleccion: ");
-    if (scanf("%d", &opc_sort) != 1) return;
+    /*GENERA EL ARREGLO SEGUN LA DISTRIBUCION*/
+
+    if (strcmp(distribucion, "uniform") == 0) {
+
+        gen_uniforme(arreglo_x, num_datos, rango_minimo, rango_maximo);
+    } else if (strcmp(distribucion, "normal") == 0) {
+
+        gen_normal(arreglo_x, num_datos, gen_mu, gen_sigma, rango_minimo, rango_maximo, 0); 
+    } else if (strcmp(distribucion, "laplace") == 0) {
+
+        gen_laplace(arreglo_x, num_datos, gen_mu, gen_b, rango_minimo, rango_maximo, 0);
+    }
+
+    memcpy(arreglo_y, arreglo_x, num_datos * sizeof(double));
+
+    /*LLAMA A LAS FUNCIONES DE ORDENAMIENTO */
+    double t_inicio_ordenamiento = get_time_sec();       //hora en que inicio a ordenar
+    if (strcmp(alg_ordenamiento, "bubble") == 0) sort_bubble(arreglo_y, num_datos);
+    else if (strcmp(alg_ordenamiento, "oddeven") == 0) sort_odd_even(arreglo_y, num_datos);
+    else if (strcmp(alg_ordenamiento, "selection") == 0) sort_selection(arreglo_y, num_datos);
+    else if (strcmp(alg_ordenamiento, "insertion") == 0) sort_insertion(arreglo_y, num_datos);
+    else if (strcmp(alg_ordenamiento, "cocktail") == 0) sort_cocktail(arreglo_y, num_datos);
+    else if (strcmp(alg_ordenamiento, "shell") == 0) sort_shell(arreglo_y, num_datos);
+    else if (strcmp(alg_ordenamiento, "bucket") == 0) sort_bucket(arreglo_y, num_datos, rango_minimo, rango_maximo);
+    else if (strcmp(alg_ordenamiento, "counting") == 0) sort_counting(arreglo_y, num_datos, rango_minimo, rango_maximo);
+    double t_fin_ordenamiento = get_time_sec(); //tiempo en el que termino de ordenar
+    double tiempo_total_ordenamiento = t_fin_ordenamiento - t_inicio_ordenamiento; //tiempo qu tardo ordenando
+
+    //calcula las estadisitcas llamnndo funciones
+    double t_inicio_calculo = get_time_sec();
+    double maximo = calc_maximo(arreglo_y, num_datos);
+    double minimo = calc_minimo(arreglo_y, num_datos);
+    double media_aritmetica = calc_media_aritmetica(arreglo_x, num_datos);
+    double media_geometrica = calc_media_geometrica(arreglo_x, num_datos);
+    double mediana = calc_mediana(arreglo_y, num_datos);
+    double moda = calc_moda(arreglo_y, num_datos);
+    double varianza = calc_varianza(arreglo_x, num_datos, media_aritmetica);
+    double desviacion_estandar = calc_desviacion_std(varianza);
+    double coef_variacion = calc_coef_variacion(desviacion_estandar, media_aritmetica);
+    double cuartil_1 = calc_cuartil(arreglo_y, num_datos, 1);
+    double decil_5 = calc_decil(arreglo_y, num_datos, 5);
+    double percentil_95 = calc_percentil(arreglo_y, num_datos, 95);
+    double momento_no_centrado_3 = calc_momento_no_centrado(arreglo_x, num_datos, 3);
+    double momento_centrado_4 = calc_momento_centrado(arreglo_x, num_datos, media_aritmetica, 4);
+    double curtosis = calc_curtosis(momento_centrado_4, desviacion_estandar);
+    double t_fin_calculo = get_time_sec();
+    double tiempo_total_calculo = t_fin_calculo - t_inicio_calculo;
     
-    char* algs[] = {"bubble", "oddeven", "selection", "insertion", "cocktail", "shell", "bucket", "counting"};
-    if (opc_sort >= 1 && opc_sort <= 8) strcpy(config->sort_alg, algs[opc_sort - 1]);
-
-    run_simulation(config);
-}
-
-void run_simulation(SimConfig* config) {
-    srand(config->seed); // Fijar semilla para reproducibilidad [cite: 21, 188]
-
-    double min_range = config->min;
-    double max_range = config->max;
-    double mu_gen = config->mu;
-    double sigma_gen = 0.0;
-    double b_gen = 0.0;
-
-    // Procesar parametrizaciones cruzadas de acuerdo a indicaciones del documento [cite: 22, 139]
-    if (strcmp(config->dist, "uniform") == 0) {
-        if (strcmp(config->mode, "params") == 0) {
-            min_range = config->mu - sqrt(3.0 * config->var); // [cite: 151]
-            max_range = config->mu + sqrt(3.0 * config->var); // [cite: 151]
-        }
-    } else if (strcmp(config->dist, "normal") == 0) {
-        if (strcmp(config->mode, "range") == 0) {
-            mu_gen = (config->min + config->max) / 2.0; // [cite: 120, 160]
-            sigma_gen = (config->max - config->min) / 6.0; // [cite: 120, 160]
-        } else {
-            mu_gen = config->mu;
-            sigma_gen = sqrt(config->var); // [cite: 157]
-            min_range = mu_gen - 3.0 * sigma_gen; // Acotamiento sugerido por la guia [cite: 178]
-            max_range = mu_gen + 3.0 * sigma_gen; // [cite: 178]
-        }
-    } else if (strcmp(config->dist, "laplace") == 0) {
-        if (strcmp(config->mode, "range") == 0) {
-            mu_gen = (config->min + config->max) / 2.0; // [cite: 121, 171]
-            b_gen = (config->max - config->min) / (6.0 * sqrt(2.0)); // [cite: 121, 172]
-        } else {
-            mu_gen = config->mu;
-            b_gen = sqrt(config->var / 2.0); // [cite: 168]
-            min_range = mu_gen - 3.0 * sqrt(2.0) * b_gen; // [cite: 178]
-            max_range = mu_gen + 3.0 * sqrt(2.0) * b_gen; // [cite: 178]
-        }
-    }
-
-    // Alojamiento dinámico de los vectores de muestras [cite: 15]
-    double* X = (double*)malloc(config->n * sizeof(double));
-    double* Y = (double*)malloc(config->n * sizeof(double));
-
-    // Generar muestras según la función de densidad elegida
-    if (strcmp(config->dist, "uniform") == 0) {
-        gen_uniforme(X, config->n, min_range, max_range);
-    } else if (strcmp(config->dist, "normal") == 0) {
-        gen_normal(X, config->n, mu_gen, sigma_gen, min_range, max_range, 0); // Re-muestreo por defecto [cite: 177]
-    } else if (strcmp(config->dist, "laplace") == 0) {
-        gen_laplace(X, config->n, mu_gen, b_gen, min_range, max_range, 0);
-    }
-
-    // Clonar el arreglo original en Y para salvaguardar X inalterado
-    memcpy(Y, X, config->n * sizeof(double));
-
-    // Ejecutar ordenamiento midiendo el tiempo exacto de forma aislada [cite: 112, 219]
-    double t_sort_start = get_time_sec();
-    if (strcmp(config->sort_alg, "bubble") == 0) sort_bubble(Y, config->n);
-    else if (strcmp(config->sort_alg, "oddeven") == 0) sort_odd_even(Y, config->n);
-    else if (strcmp(config->sort_alg, "selection") == 0) sort_selection(Y, config->n);
-    else if (strcmp(config->sort_alg, "insertion") == 0) sort_insertion(Y, config->n);
-    else if (strcmp(config->sort_alg, "cocktail") == 0) sort_cocktail(Y, config->n);
-    else if (strcmp(config->sort_alg, "shell") == 0) sort_shell(Y, config->n);
-    else if (strcmp(config->sort_alg, "bucket") == 0) sort_bucket(Y, config->n, min_range, max_range);
-    else if (strcmp(config->sort_alg, "counting") == 0) sort_counting(Y, config->n, min_range, max_range);
-    double t_sort_end = get_time_sec();
-    double total_sort_time = t_sort_end - t_sort_start;
-
-    // Medición aislada de cálculos analíticos estadísticas [cite: 127]
-    double t_calc_start = get_time_sec();
-    double maximo = calc_maximo(Y, config->n);
-    double minimo = calc_minimo(Y, config->n);
-    double media_a = calc_media_aritmetica(X, config->n);
-    double media_g = calc_media_geometrica(X, config->n);
-    double mediana = calc_mediana(Y, config->n);
-    double moda = calc_moda(Y, config->n);
-    double varianza = calc_varianza(X, config->n, media_a);
-    double sigma = calc_desviacion_std(varianza);
-    double cv = calc_coef_variacion(sigma, media_a);
-    double q1 = calc_cuartil(Y, config->n, 1);
-    double d5 = calc_decil(Y, config->n, 5);
-    double p95 = calc_percentil(Y, config->n, 95);
-    double alpha_3 = calc_momento_no_centrado(X, config->n, 3);
-    double mu_4 = calc_momento_centrado(X, config->n, media_a, 4);
-    double curtosis = calc_curtosis(mu_4, sigma);
-    double t_calc_end = get_time_sec();
-    double total_calc_time = t_calc_end - t_calc_start;
-
-    // Despliegue de Resultados Estructurados en Tabla única [cite: 123, 126]
+    //impresiones
+    
     printf("\n+------------------------------------+------------------------------------+\n");
     printf("| MEDIDA ESTADISTICA                 | VALOR CALCULADO                    |\n");
     printf("+------------------------------------+------------------------------------+\n");
     printf("| 1. Maximo                          | %-34.6f |\n", maximo);
     printf("| 2. Minimo                          | %-34.6f |\n", minimo);
-    printf("| 3. Media Aritmetica                | %-34.6f |\n", media_a);
-    printf("| 4. Media Geometrica                | %-34.6f |\n", media_g);
+    printf("| 3. Media Aritmetica                | %-34.6f |\n", media_aritmetica);
+    printf("| 4. Media Geometrica                | %-34.6f |\n", media_geometrica);
     printf("| 5. Mediana                         | %-34.6f |\n", mediana);
     printf("| 6. Moda                            | %-34.6f |\n", moda);
     printf("| 7. Varianza                        | %-34.6f |\n", varianza);
-    printf("| 8. Desviacion Estandar             | %-34.6f |\n", sigma);
-    printf("| 9. Coeficiente de Variacion (CV)   | %-34.6f |\n", cv);
-    printf("| 10. Cuartil 1 (Q1)                 | %-34.6f |\n", q1);
-    printf("| 11. Decil 5 (D5)                   | %-34.6f |\n", d5);
-    printf("| 12. Percentil 95 (P95)             | %-34.6f |\n", p95);
-    printf("| 13. Momento No Centrado (Orden 3)  | %-34.6f |\n", alpha_3);
-    printf("| 14. Momento Centrado (Orden 4)     | %-34.6f |\n", mu_4);
+    printf("| 8. Desviacion Estandar             | %-34.6f |\n", desviacion_estandar);
+    printf("| 9. Coeficiente de Variacion (CV)   | %-34.6f |\n", coef_variacion);
+    printf("| 10. Cuartil 1 (Q1)                 | %-34.6f |\n", cuartil_1);
+    printf("| 11. Decil 5 (D5)                   | %-34.6f |\n", decil_5);
+    printf("| 12. Percentil 95 (P95)             | %-34.6f |\n", percentil_95);
+    printf("| 13. Momento No Centrado (Orden 3)  | %-34.6f |\n", momento_no_centrado_3);
+    printf("| 14. Momento Centrado (Orden 4)     | %-34.6f |\n", momento_centrado_4);
     printf("| 15. Curtosis                       | %-34.6f |\n", curtosis);
     printf("+------------------------------------+------------------------------------+\n");
-    printf("| Tiempo de Ordenamiento (%-9s) | %-31.6f seg |\n", config->sort_alg, total_sort_time);
-    printf("| Tiempo de Calculo de Medidas       | %-31.6f seg |\n", total_calc_time);
+    printf("| Tiempo de Ordenamiento (%-9s) | %-31.6f seg |\n", alg_ordenamiento, tiempo_total_ordenamiento);
+    printf("| Tiempo de Calculo de Medidas       | %-31.6f seg |\n", tiempo_total_calculo);
     printf("+------------------------------------+------------------------------------+\n\n");
 
-    free(X);
-    free(Y);
+    free(arreglo_x);
+    free(arreglo_y);
 }

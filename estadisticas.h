@@ -1,10 +1,4 @@
-/**
- * @file statistics.h
- * @brief Prototipos de las 15 funciones de cálculo estadístico.
- */
-
-#ifndef STATISTICS_H
-#define STATISTICS_H
+#define ESTADISTICAS_H
 
 double calc_maximo(const double* Y, int n);
 double calc_minimo(const double* Y, int n);
@@ -22,4 +16,3 @@ double calc_momento_no_centrado(const double* X, int n, int orden);
 double calc_momento_centrado(const double* X, int n, double mu, int orden);
 double calc_curtosis(double mu_4, double sigma);
 
-#endif // STATISTICS_H
